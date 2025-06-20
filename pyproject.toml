@@ -1,0 +1,20 @@
+[project]
+name = "deepseek-browser-automation"
+version = "0.1.0"
+description = "Automation utilities for interacting with browsers via Python"
+authors = [
+    {name="DeepSeek", email="info@deepseek.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "browser-use",
+    "gradio",
+    "langchain-ollama",
+    "playwright"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
