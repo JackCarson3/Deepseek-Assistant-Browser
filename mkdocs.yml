@@ -1,0 +1,6 @@
+site_name: DeepSeek Browser Automation
+nav:
+  - Home: index.md
+  - Examples: examples.md
+  - API Reference: api_reference.md
+docs_dir: docs
