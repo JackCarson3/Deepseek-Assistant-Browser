@@ -41,3 +41,47 @@ asyncio.run(main())
 
 Several pre-built task templates are provided under `examples/`. They cover common use cases in research, data collection, e-commerce and social media automation. See [docs/examples.md](docs/examples.md) for details and expected outputs.
 
+
+## Deployment
+
+The project ships with several options for running the automation stack:
+
+### Docker
+
+A multi‑stage `Dockerfile` builds an isolated runtime image. Build and run with:
+
+```bash
+docker build -t deepseek-browser .
+docker run --env-file .env deepseek-browser
+```
+
+### Docker Compose
+
+Use `docker-compose.yml` for a full stack including Prometheus and Grafana:
+
+```bash
+docker compose up
+```
+
+### Cloud Scripts
+
+Scripts under `deploy/cloud/` push the Docker image to AWS, GCP or Azure and
+create the corresponding container service. Each script requires the vendor’s CLI
+and credentials.
+
+### Local Installation
+
+Helper scripts in `scripts/` install Python dependencies on Linux, macOS or
+Windows. Run the script that matches your system to set up a local environment.
+
+### Environment Configuration
+
+Copy `.env.example` to `.env` and adjust values to configure model endpoints and
+logging.
+
+### Health Checks and Monitoring
+
+A simple health check script is included at `scripts/healthcheck.sh`. Metrics can
+be exported through the built-in `Monitor` class and visualised via the bundled
+Prometheus/Grafana setup.
+
