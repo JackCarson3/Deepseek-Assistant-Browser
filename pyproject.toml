@@ -15,6 +15,27 @@ dependencies = [
     "playwright"
 ]
 
+[project.optional-dependencies]
+dev = [
+    "black",
+    "flake8",
+    "mypy",
+    "bandit",
+    "pip-audit",
+    "pytest",
+    "pytest-cov",
+    "mkdocs",
+    "python-semantic-release",
+]
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.semantic_release]
+version_variable = [
+    "src/deepseek_browser/__init__.py:__version__",
+    "pyproject.toml:project.version",
+]
+branch = "main"
+upload_to_release = false
