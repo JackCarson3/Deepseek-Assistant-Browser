@@ -36,3 +36,8 @@ async def main():
 
 asyncio.run(main())
 ```
+
+## Example Task Templates
+
+Several pre-built task templates are provided under `examples/`. They cover common use cases in research, data collection, e-commerce and social media automation. See [docs/examples.md](docs/examples.md) for details and expected outputs.
+
