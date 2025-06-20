@@ -41,3 +41,21 @@ asyncio.run(main())
 
 Several pre-built task templates are provided under `examples/`. They cover common use cases in research, data collection, e-commerce and social media automation. See [docs/examples.md](docs/examples.md) for details and expected outputs.
 
+## Monitoring and Analytics
+
+`deepseek_browser.Monitor` can be attached to a `TaskExecutor` to collect task
+metrics, error details and browser resource usage. Collected analytics can be
+exported to JSON for further analysis:
+
+```python
+from deepseek_browser import TaskExecutor, Monitor
+
+monitor = Monitor()
+executor = TaskExecutor(monitor=monitor)
+asyncio.run(executor.start())
+asyncio.run(executor.execute("Check example.com"))
+asyncio.run(executor.close())
+report = monitor.get_report()
+monitor.export_json("metrics.json")
+```
+

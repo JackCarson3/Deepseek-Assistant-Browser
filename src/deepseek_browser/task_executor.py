@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, List, Optional
 
+from .monitoring import Monitor
+
 from ollama_config import BrowserAgent, BrowserAgentConfig
 
 
@@ -37,10 +39,12 @@ class TaskExecutor:
         agent_config: Optional[BrowserAgentConfig] = None,
         default_timeout: int = 300,
         agent: Optional[BrowserAgent] = None,
+        monitor: Optional[Monitor] = None,
     ) -> None:
         self.agent = agent or BrowserAgent(agent_config)
         self.default_timeout = default_timeout
         self.tasks: List[Task] = []
+        self.monitor = monitor
         self.logger = logging.getLogger(self.__class__.__name__)
 
     async def start(self) -> None:
@@ -73,6 +77,8 @@ class TaskExecutor:
             self.logger.exception("Task %s failed: %s", task.task_id, exc)
         finally:
             task.finished_at = datetime.utcnow()
+            if self.monitor is not None:
+                self.monitor.record_task(task)
 
         return task
 
@@ -102,6 +108,8 @@ class TaskExecutor:
             yield {"task_id": task.task_id, "status": task.status, "error": str(exc)}
         finally:
             task.finished_at = datetime.utcnow()
+            if self.monitor is not None:
+                self.monitor.record_task(task)
 
     def history(self) -> List[Task]:
         """Return the list of executed tasks."""
