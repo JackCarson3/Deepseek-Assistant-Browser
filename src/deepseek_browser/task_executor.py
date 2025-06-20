@@ -9,7 +9,15 @@ from ollama_config import BrowserAgent, BrowserAgentConfig
 
 @dataclass
 class TaskResult:
-    """Structured result from a task."""
+    """Result object returned after a task finishes.
+
+    Attributes
+    ----------
+    success:
+        Whether the task completed successfully.
+    history:
+        Raw interaction history returned by ``BrowserAgent``.
+    """
 
     success: bool
     history: Any
@@ -17,7 +25,28 @@ class TaskResult:
 
 @dataclass
 class Task:
-    """Representation of a single task."""
+    """Representation of a user instruction executed by :class:`TaskExecutor`.
+
+    Attributes
+    ----------
+    description:
+        Natural language instruction provided by the user.
+    task_id:
+        Unique identifier assigned by ``TaskExecutor``.
+    status:
+        Current status. One of ``pending``, ``running``, ``success``, ``failed``
+        or ``timeout``.
+    result:
+        Populated with a :class:`TaskResult` when the task finishes successfully.
+    error:
+        Error message when ``status`` is ``failed`` or ``timeout``.
+    created_at:
+        Timestamp when the task object was created.
+    started_at:
+        Timestamp when execution began.
+    finished_at:
+        Timestamp when execution finished.
+    """
 
     description: str
     task_id: int
@@ -30,7 +59,18 @@ class Task:
 
 
 class TaskExecutor:
-    """Execute tasks using :class:`BrowserAgent` with progress tracking."""
+    """Execute tasks using :class:`BrowserAgent` with progress tracking.
+
+    Parameters
+    ----------
+    agent_config:
+        Optional :class:`BrowserAgentConfig` to customize the underlying agent.
+    default_timeout:
+        Timeout applied to :meth:`execute` and :meth:`execute_stream` when none
+        is provided.
+    agent:
+        Existing :class:`BrowserAgent` instance. Mainly used for testing.
+    """
 
     def __init__(
         self,
@@ -44,11 +84,27 @@ class TaskExecutor:
         self.logger = logging.getLogger(self.__class__.__name__)
 
     async def start(self) -> None:
-        """Initialize the underlying agent."""
+        """Initialize the underlying :class:`BrowserAgent`.
+
+        Must be called before executing any tasks.
+        """
         await self.agent.create_agent()
 
     async def execute(self, description: str, timeout: Optional[int] = None) -> Task:
-        """Execute a task and return a :class:`Task` with results."""
+        """Execute a single task.
+
+        Parameters
+        ----------
+        description:
+            Natural language instruction for the agent.
+        timeout:
+            Optional per-task timeout in seconds.
+
+        Returns
+        -------
+        Task
+            Object containing status, result and metadata.
+        """
         task = Task(description=description, task_id=len(self.tasks) + 1)
         self.tasks.append(task)
 
@@ -77,7 +133,14 @@ class TaskExecutor:
         return task
 
     async def execute_stream(self, description: str, timeout: Optional[int] = None):
-        """Execute a task and yield progress updates."""
+        """Execute a task and yield progress updates.
+
+        Yields
+        ------
+        dict
+            Progress dictionaries containing ``task_id``, ``status`` and
+            optionally ``history`` or ``error``.
+        """
         task = Task(description=description, task_id=len(self.tasks) + 1)
         self.tasks.append(task)
         task.status = "running"
@@ -104,9 +167,12 @@ class TaskExecutor:
             task.finished_at = datetime.utcnow()
 
     def history(self) -> List[Task]:
-        """Return the list of executed tasks."""
+        """Return the list of executed tasks in order of submission."""
         return self.tasks
 
     async def close(self) -> None:
-        """Close the underlying browser agent."""
+        """Close the underlying browser agent and free resources.
+
+        It is safe to call this method multiple times.
+        """
         await self.agent.close()

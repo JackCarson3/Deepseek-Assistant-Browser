@@ -9,7 +9,10 @@ from langchain_ollama import ChatOllama
 
 @dataclass
 class BrowserAgentConfig:
-    """Configuration for :class:`BrowserAgent`."""
+    """Configuration for :class:`BrowserAgent`.
+
+    Parameters correspond to ``browser_use`` and Ollama options.
+    """
 
     model_name: str = "deepseek"  # default model
     ollama_url: str = "http://localhost:11434"  # local ollama server
@@ -24,7 +27,11 @@ class BrowserAgentConfig:
 
 
 class BrowserAgent:
-    """Wrapper around ``browser_use.Agent`` using an Ollama LLM."""
+    """Wrapper around ``browser_use.Agent`` using an Ollama LLM.
+
+    The agent orchestrates a language model and a browser session to carry out
+    complex tasks expressed in natural language.
+    """
 
     def __init__(self, config: Optional[BrowserAgentConfig] = None) -> None:
         self.config = config or BrowserAgentConfig()
@@ -61,7 +68,11 @@ class BrowserAgent:
         return profile
 
     async def create_agent(self) -> None:
-        """Initialize the LLM and browser session."""
+        """Initialize the LLM and browser session.
+
+        This method sets up ``ChatOllama`` and launches a ``BrowserSession``
+        according to :class:`BrowserAgentConfig`.
+        """
         try:
             self.logger.info("Creating ChatOllama with model %s", self.config.model_name)
             self.llm = ChatOllama(
@@ -82,7 +93,18 @@ class BrowserAgent:
             raise
 
     async def run_task(self, task_description: str):
-        """Run a task description through the agent with retry support."""
+        """Run a task description through the agent with retry support.
+
+        Parameters
+        ----------
+        task_description:
+            Natural language instruction to execute in the browser.
+
+        Returns
+        -------
+        list
+            Interaction history returned by ``browser_use.Agent``.
+        """
         attempts = 0
         while attempts <= self.config.retries:
             if self.browser_session is None or self.llm is None or not self.browser_session.is_connected():
@@ -108,7 +130,7 @@ class BrowserAgent:
                 self.logger.info("Retrying task...")
 
     async def close(self) -> None:
-        """Close the browser session."""
+        """Close the browser session and clean up."""
         if self.browser_session is not None:
             try:
                 await self.browser_session.stop()
@@ -119,9 +141,11 @@ class BrowserAgent:
                 await self._cleanup_session()
 
     async def __aenter__(self) -> "BrowserAgent":
+        """Context manager entry, calls :meth:`create_agent`."""
         await self.create_agent()
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
+        """Context manager exit, ensuring resources are released."""
         await self.close()
 
