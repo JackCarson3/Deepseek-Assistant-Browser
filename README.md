@@ -18,3 +18,21 @@ pip install -r requirements.txt
 
 ## License
 Released under the MIT license.
+
+## Task Execution System
+
+The `TaskExecutor` class allows running natural language tasks using the DeepSeek R1 model through Ollama. It manages a browser session via `browser-use` and tracks the progress and result of each task.
+
+```python
+import asyncio
+from deepseek_browser import TaskExecutor
+
+async def main():
+    executor = TaskExecutor()
+    await executor.start()
+    task = await executor.execute("Open example.com")
+    print(task.status, task.result)
+    await executor.close()
+
+asyncio.run(main())
+```
