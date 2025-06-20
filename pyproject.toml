@@ -12,7 +12,8 @@ dependencies = [
     "browser-use",
     "gradio",
     "langchain-ollama",
-    "playwright"
+    "playwright",
+    "psutil"
 ]
 
 [build-system]

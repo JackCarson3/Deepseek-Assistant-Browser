@@ -1,10 +1,13 @@
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any, Optional, Tuple
 
 from browser_use import Agent, BrowserProfile, BrowserSession
 from browser_use.logging_config import setup_logging
 from langchain_ollama import ChatOllama
+
+from deepseek_browser.monitoring import Monitor
 
 
 @dataclass
@@ -33,12 +36,17 @@ class BrowserAgent:
     complex tasks expressed in natural language.
     """
 
-    def __init__(self, config: Optional[BrowserAgentConfig] = None) -> None:
+    def __init__(
+        self,
+        config: Optional[BrowserAgentConfig] = None,
+        monitor: Optional[Monitor] = None,
+    ) -> None:
         self.config = config or BrowserAgentConfig()
         setup_logging()
         self.logger = logging.getLogger(self.__class__.__name__)
         self.llm: Optional[ChatOllama] = None
         self.browser_session: Optional[BrowserSession] = None
+        self.monitor = monitor
 
     async def _cleanup_session(self) -> None:
         if self.browser_session is not None:
@@ -92,7 +100,7 @@ class BrowserAgent:
             self.logger.exception("Failed to create agent: %s", exc)
             raise
 
-    async def run_task(self, task_description: str):
+    async def run_task(self, task_description: str, task_id: Optional[int] = None):
         """Run a task description through the agent with retry support.
 
         Parameters
@@ -118,7 +126,11 @@ class BrowserAgent:
             )
             try:
                 self.logger.info("Running task: %s (attempt %s)", task_description, attempts + 1)
+                start = time.perf_counter()
                 history = await agent.run()
+                duration = time.perf_counter() - start
+                if self.monitor and task_id is not None:
+                    self.monitor.record_model_call(task_id=task_id, duration=duration)
                 self.logger.info("Task finished")
                 return history
             except Exception as exc:

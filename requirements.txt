@@ -2,3 +2,4 @@ browser-use
 gradio
 langchain-ollama
 playwright
+psutil

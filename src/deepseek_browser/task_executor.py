@@ -1,10 +1,13 @@
 import asyncio
 import logging
+import time
+import inspect
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, List, Optional
 
 from ollama_config import BrowserAgent, BrowserAgentConfig
+from .monitoring import Monitor
 
 
 @dataclass
@@ -77,8 +80,10 @@ class TaskExecutor:
         agent_config: Optional[BrowserAgentConfig] = None,
         default_timeout: int = 300,
         agent: Optional[BrowserAgent] = None,
+        monitor: Optional[Monitor] = None,
     ) -> None:
-        self.agent = agent or BrowserAgent(agent_config)
+        self.monitor = monitor or Monitor()
+        self.agent = agent or BrowserAgent(agent_config, monitor=self.monitor)
         self.default_timeout = default_timeout
         self.tasks: List[Task] = []
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -113,10 +118,18 @@ class TaskExecutor:
         task.started_at = datetime.utcnow()
 
         try:
-            history = await asyncio.wait_for(
-                self.agent.run_task(description),
-                timeout=timeout or self.default_timeout,
-            )
+            start = time.perf_counter()
+            if 'task_id' in inspect.signature(self.agent.run_task).parameters:
+                history = await asyncio.wait_for(
+                    self.agent.run_task(description, task_id=task.task_id),
+                    timeout=timeout or self.default_timeout,
+                )
+            else:
+                history = await asyncio.wait_for(
+                    self.agent.run_task(description),
+                    timeout=timeout or self.default_timeout,
+                )
+            _ = time.perf_counter() - start
             task.result = TaskResult(success=True, history=history)
             task.status = "success"
         except asyncio.TimeoutError:
@@ -129,6 +142,9 @@ class TaskExecutor:
             self.logger.exception("Task %s failed: %s", task.task_id, exc)
         finally:
             task.finished_at = datetime.utcnow()
+            if self.monitor:
+                duration = (task.finished_at - task.started_at).total_seconds()
+                self.monitor.record_task(task, duration)
 
         return task
 
@@ -148,10 +164,18 @@ class TaskExecutor:
         yield {"task_id": task.task_id, "status": task.status}
 
         try:
-            history = await asyncio.wait_for(
-                self.agent.run_task(description),
-                timeout=timeout or self.default_timeout,
-            )
+            start = time.perf_counter()
+            if 'task_id' in inspect.signature(self.agent.run_task).parameters:
+                history = await asyncio.wait_for(
+                    self.agent.run_task(description, task_id=task.task_id),
+                    timeout=timeout or self.default_timeout,
+                )
+            else:
+                history = await asyncio.wait_for(
+                    self.agent.run_task(description),
+                    timeout=timeout or self.default_timeout,
+                )
+            _ = time.perf_counter() - start
             task.result = TaskResult(success=True, history=history)
             task.status = "success"
             yield {"task_id": task.task_id, "status": task.status, "history": history}
@@ -165,6 +189,9 @@ class TaskExecutor:
             yield {"task_id": task.task_id, "status": task.status, "error": str(exc)}
         finally:
             task.finished_at = datetime.utcnow()
+            if self.monitor:
+                duration = (task.finished_at - task.started_at).total_seconds()
+                self.monitor.record_task(task, duration)
 
     def history(self) -> List[Task]:
         """Return the list of executed tasks in order of submission."""
@@ -176,3 +203,8 @@ class TaskExecutor:
         It is safe to call this method multiple times.
         """
         await self.agent.close()
+
+    def export_metrics(self, path: str) -> None:
+        """Export collected analytics data to ``path``."""
+        if self.monitor:
+            self.monitor.export_json(path)
